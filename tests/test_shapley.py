@@ -94,7 +94,7 @@ class test_boolean_diff_expressed_matrix(unittest.TestCase):
         """Ensure the output array has the correct shape and is a boolean type."""
         B = boolean_diff_expressed_matrix(self.A_SD, self.A_SR)
         self.assertEqual(B.shape, self.A_SD.shape, "Output shape is incorrect.")
-        self.assertEqual(B.dtype, np.bool_, "Output type is not boolean.")
+        self.assertEqual(B.dtype, np.dtype(bool), "Output type is not boolean.")
 
     def test_example1(self):
         """Example 1 in thesis paper."""
