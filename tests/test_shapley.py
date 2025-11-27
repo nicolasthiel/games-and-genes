@@ -2,6 +2,7 @@ import unittest
 import numpy as np
 
 from python.shapley import boolean_diff_expressed_matrix
+from python.shapley import support_of_binary_matrix
 
 class test_boolean_diff_expressed_matrix(unittest.TestCase):
     """
@@ -118,3 +119,60 @@ class test_boolean_diff_expressed_matrix(unittest.TestCase):
             [False, True, True]
         ])
         np.testing.assert_array_equal(B, expected_B, "Example 1 test case failed.")
+
+
+class test_support_of_binary_matrix(unittest.TestCase):
+    """
+    Test suite for the support_of_binary_matrix function.
+    Uses numpy.testing.assert_array_equal for robust array comparisons.
+    """
+
+    def test_support_basic(self):
+        """Test basic functionality of support_of_binary_matrix."""
+        from python.shapley import support_of_binary_matrix
+
+        B = np.array([
+            [True, False, True],
+            [False, True, False],
+            [True, True, False]
+        ])
+
+        expected_support = [
+            {0, 2},  # Column 0 has True at rows 0 and 2
+            {1, 2},  # Column 1 has True at rows 1 and 2
+            {0}      # Column 2 has True at row 0
+        ]
+
+        support = support_of_binary_matrix(B)
+        self.assertEqual(support, expected_support, "Support calculation is incorrect.")
+
+    def test_support_all_false_matrix(self):
+        """Test support_of_binary_matrix with an all-false matrix."""
+        from python.shapley import support_of_binary_matrix
+
+        B = np.array([
+            [False, False, False],
+            [False, False, False],
+            [False, False, False]
+        ])
+        expected_support = [set(), set(), set()] # list of empty sets
+
+        support = support_of_binary_matrix(B)
+        self.assertEqual(support, expected_support, "Support for all-false matrix should be a list of empty sets.")
+
+    def test_example1(self):
+        """Example 1 in thesis paper."""
+        B = np.array([
+            [False, True, False],
+            [False, False, True],
+            [True, True, True],
+            [False, True, True]
+        ])
+        expected_support = [
+            {2},      # Column 0 has True at row 2
+            {0, 2, 3},# Column 1 has True at rows 0, 2, and 3
+            {1, 2, 3} # Column 2 has True at rows 1, 2, and 3
+        ]
+
+        support = support_of_binary_matrix(B)
+        self.assertEqual(support, expected_support, "Example 1 support calculation is incorrect.")

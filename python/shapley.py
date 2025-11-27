@@ -11,3 +11,9 @@ def boolean_diff_expressed_matrix(
     p_upper = np.percentile(A_SR, upper_prctl, axis=1)
     B = (A_SD <= p_lower[:, None]) | (A_SD >= p_upper[:, None])
     return B
+
+
+def support_of_binary_matrix(
+        B: NDArray[np.bool_]
+    ):
+        return [set(np.nonzero(col)[0].tolist()) for col in B.T]
