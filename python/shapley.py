@@ -15,11 +15,11 @@ def boolean_diff_expressed_matrix(
 
 def support_of_binary_matrix(
         B: NDArray[np.bool_]
-    ):
+    ) -> list[set[int]]:
         return [set(np.nonzero(col)[0].tolist()) for col in B.T]
 
 
-def find_coalitions(sp_B):
+def find_coalitions(sp_B: list[set[int]]) -> list[set[int]]:
     coalitions = []
     if not sp_B:
         return coalitions
