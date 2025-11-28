@@ -39,3 +39,7 @@ def find_coalitions(sp_B: list[set[int]]) -> list[set[int]]:
             coalitions.append(support)
             
     return coalitions
+
+
+def unanimity_coefficients(sp_B: list[set[int]], coalitions: list[set[int]]) -> NDArray[np.float64]:
+    return np.array([sp_B.count(coalition) for coalition in coalitions])/len(sp_B)
