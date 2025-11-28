@@ -1,8 +1,8 @@
 import unittest
 import numpy as np
 
-from python.shapley import boolean_diff_expressed_matrix
-from python.shapley import support_of_binary_matrix
+from python.shapley import boolean_diff_expressed_matrix, support_of_binary_matrix, find_coalitions
+
 
 class test_boolean_diff_expressed_matrix(unittest.TestCase):
     """
@@ -176,3 +176,57 @@ class test_support_of_binary_matrix(unittest.TestCase):
 
         support = support_of_binary_matrix(B)
         self.assertEqual(support, expected_support, "Example 1 support calculation is incorrect.")
+
+class test_find_coalitions(unittest.TestCase):
+    """
+    Test suite for the find_coalitions function.
+    """
+
+    def test_find_coalitions_basic(self):
+        """Test basic functionality of find_coalitions."""
+        from python.shapley import find_coalitions
+
+        sp_B = [
+            {0, 2},
+            {1, 2},
+            {0},
+            {0, 2},  # Duplicate, should not appear twice
+            set(),    # Empty set, should be skipped
+            {1}
+        ]
+
+        expected_coalitions = [
+            {0, 2},
+            {1, 2},
+            {0},
+            {1}
+        ]
+
+        coalitions = find_coalitions(sp_B)
+        self.assertEqual(coalitions, expected_coalitions, "Coalition finding is incorrect.")
+
+    def test_find_coalitions_empty_input(self):
+        """Test find_coalitions with empty input."""
+        from python.shapley import find_coalitions
+
+        sp_B = []
+        expected_coalitions = []
+
+        coalitions = find_coalitions(sp_B)
+        self.assertEqual(coalitions, expected_coalitions, "Coalition finding for empty input should return empty list.")
+
+    def test_example1(self):
+        """Example 1 in thesis paper."""
+        sp_B = [
+            {2},
+            {0, 2, 3},
+            {1, 2, 3}
+        ]
+        expected_coalitions = [
+            {2},
+            {0, 2, 3},
+            {1, 2, 3}
+        ]
+
+        coalitions = find_coalitions(sp_B)
+        self.assertEqual(coalitions, expected_coalitions, "Example 1 coalition finding is incorrect.")

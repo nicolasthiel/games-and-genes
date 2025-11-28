@@ -17,3 +17,25 @@ def support_of_binary_matrix(
         B: NDArray[np.bool_]
     ):
         return [set(np.nonzero(col)[0].tolist()) for col in B.T]
+
+
+def find_coalitions(sp_B):
+    coalitions = []
+    if not sp_B:
+        return coalitions
+    
+    for support in sp_B:
+        
+        if not support: # ignore empty set
+            continue
+            
+        to_append = True
+        for coalition in coalitions:
+            if coalition == support:
+                to_append = False
+                break
+        
+        if to_append:
+            coalitions.append(support)
+            
+    return coalitions
