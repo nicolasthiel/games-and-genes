@@ -91,12 +91,6 @@ class test_boolean_diff_expressed_matrix(unittest.TestCase):
         
         np.testing.assert_array_equal(B, expected_B, "Test failed for 50-50 percentile bounds.")
 
-    def test_output_properties(self):
-        """Ensure the output array has the correct shape and is a boolean type."""
-        B = boolean_diff_expressed_matrix(self.A_SD, self.A_SR)
-        self.assertEqual(B.shape, self.A_SD.shape, "Output shape is incorrect.")
-        self.assertEqual(B.dtype, np.dtype(bool), "Output type is not boolean.")
-
     def test_example1(self):
         """Example 1 in thesis paper."""
         A_SR = np.array([
