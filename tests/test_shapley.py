@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 
-from python.shapley import boolean_diff_expressed_matrix, support_of_binary_matrix, find_coalitions
+from games_and_genes.shapley import boolean_diff_expressed_matrix, support_of_binary_matrix, find_coalitions
 
 
 class test_boolean_diff_expressed_matrix(unittest.TestCase):
@@ -123,7 +123,6 @@ class test_support_of_binary_matrix(unittest.TestCase):
 
     def test_support_basic(self):
         """Test basic functionality of support_of_binary_matrix."""
-        from python.shapley import support_of_binary_matrix
 
         B = np.array([
             [True, False, True],
@@ -142,7 +141,6 @@ class test_support_of_binary_matrix(unittest.TestCase):
 
     def test_support_all_false_matrix(self):
         """Test support_of_binary_matrix with an all-false matrix."""
-        from python.shapley import support_of_binary_matrix
 
         B = np.array([
             [False, False, False],
@@ -178,7 +176,6 @@ class test_find_coalitions(unittest.TestCase):
 
     def test_find_coalitions_basic(self):
         """Test basic functionality of find_coalitions."""
-        from python.shapley import find_coalitions
 
         sp_B = [
             {0, 2},
@@ -201,7 +198,6 @@ class test_find_coalitions(unittest.TestCase):
 
     def test_find_coalitions_empty_input(self):
         """Test find_coalitions with empty input."""
-        from python.shapley import find_coalitions
 
         sp_B = []
         expected_coalitions = []
