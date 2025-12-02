@@ -1,8 +1,7 @@
 import unittest
 import numpy as np
 
-from games_and_genes.shapley import boolean_diff_expressed_matrix, support_of_binary_matrix, find_coalitions
-
+from games_and_genes.shapley import *
 
 class test_boolean_diff_expressed_matrix(unittest.TestCase):
     """
@@ -220,3 +219,23 @@ class test_find_coalitions(unittest.TestCase):
 
         coalitions = find_coalitions(sp_B)
         self.assertEqual(coalitions, expected_coalitions, "Example 1 coalition finding is incorrect.")
+
+class test_unanimity_coefficients(unittest.TestCase):
+    """Test suite for the unanimity_coefficients function."""
+
+    def test_example1(self):
+        """Example 1 in thesis paper."""
+        sp_B = [
+            {2},
+            {0, 2, 3},
+            {1, 2, 3}
+        ]
+        coalitions = [
+            {2},
+            {0, 2, 3},
+            {1, 2, 3}
+        ]
+        expected_coefficients = np.array([1/3, 1/3, 1/3])
+
+        coefficients = unanimity_coefficients(sp_B, coalitions)
+        np.testing.assert_array_equal(coefficients, expected_coefficients, "Example 1 unanimity coefficients are incorrect.")
