@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 
-from games_and_genes.shapley import *
+from games_and_genes.utils import *
 
 class test_boolean_diff_expressed_matrix(unittest.TestCase):
     """
