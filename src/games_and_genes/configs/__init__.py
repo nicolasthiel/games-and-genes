@@ -1,0 +1,1 @@
+from .loader import active_config as cfg
