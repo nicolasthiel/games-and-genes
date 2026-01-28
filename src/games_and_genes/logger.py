@@ -34,7 +34,10 @@ class ColoredFormatter(logging.Formatter):
 
 def setup_logging(experiment_name: str, log_config: dict, log_dir: str = "logs"):
     # ... Create directory logic (same as before) ...
-    if log_config.get('save_to_file', False):
+    if log_config.get('log_dir'):
+        log_dir = log_config['log_dir']
+
+    if log_config.get('log_to_file', False):
         os.makedirs(log_dir, exist_ok=True)
 
     logger = logging.getLogger()
@@ -51,7 +54,7 @@ def setup_logging(experiment_name: str, log_config: dict, log_dir: str = "logs")
     logger.addHandler(console_handler)
 
     # --- HANDLER 2: FILE (CLEAN / NO COLORS) ---
-    if log_config.get('save_to_file', False):
+    if log_config.get('log_to_file', False):
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"{experiment_name}_{timestamp}.log"
         file_path = os.path.join(log_dir, filename)

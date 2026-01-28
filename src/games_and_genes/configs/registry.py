@@ -8,7 +8,7 @@ EXAMPLE1: ExperimentConfig = {
     "logging": {
         "level": "INFO",
         "log_to_file": True,
-        "log_file_path": "logs/example1"
+        "log_dir": "logs/example1"
     }
 }
 
