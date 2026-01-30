@@ -32,11 +32,8 @@ class ColoredFormatter(logging.Formatter):
         formatter = logging.Formatter(log_fmt, datefmt="%Y-%m-%d %H:%M:%S")
         return formatter.format(record)
 
-def setup_logging(experiment_name: str, log_config: dict, log_dir: str = "logs"):
-    # ... Create directory logic (same as before) ...
-    if log_config.get('log_dir'):
-        log_dir = log_config['log_dir']
-
+def setup_logging(experiment_name: str, log_config: dict):
+    log_dir = log_config.get('log_dir', f"logs/{experiment_name}")
     if log_config.get('log_to_file', False):
         os.makedirs(log_dir, exist_ok=True)
 
