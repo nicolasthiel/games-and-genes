@@ -4,7 +4,7 @@ from .schema import ExperimentConfig
 DEFAULT_CONFIGS = {
     "logging": {
         "level": "INFO",
-        "log_to_file": True,
+        "log_to_file": False,
     },
 }
 
