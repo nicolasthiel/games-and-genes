@@ -22,6 +22,8 @@ class OutputConfig(TypedDict):
 class PreprocessingConfig(TypedDict):
     normalize: bool
     method_normalize: Optional[Literal['DSEQ2']]
+    transform: bool
+    method_transform: Optional[Literal['log2', 'log10']]
 
 class ExperimentConfig(TypedDict):
     name: str

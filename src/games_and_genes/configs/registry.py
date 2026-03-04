@@ -27,6 +27,8 @@ EXAMPLE1: ExperimentConfig = {
     "preprocessing": {
         "normalize": True,
         "method_normalize": "DSEQ2",
+        "transform": True,
+        "method_transform": "log2",
     },
     "logging": DEFAULT_CONFIGS["logging"]
 }
