@@ -17,7 +17,7 @@ class ColoredFormatter(logging.Formatter):
     reset = "\x1b[0m"
     
     # Your desired format (Clickable)
-    fmt = "%(asctime)s - %(filename)s:%(lineno)d - %(levelname)s - %(message)s"
+    fmt = "%(asctime)s - %(levelname)s - %(message)s - %(filename)s:%(lineno)d"
 
     FORMATS = {
         logging.DEBUG: grey + fmt + reset,
