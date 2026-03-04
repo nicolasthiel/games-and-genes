@@ -4,7 +4,7 @@ from games_and_genes.configs import cfg
 from games_and_genes.logger import setup_logging
 
 
-logger = setup_logging(cfg['name'], cfg['logging'])
+logger = setup_logging(cfg['logging'], cfg['output']['output_dir'])
 logger = logging.getLogger(__name__)
 
 def run():
