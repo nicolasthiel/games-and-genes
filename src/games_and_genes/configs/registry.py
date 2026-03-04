@@ -1,8 +1,16 @@
 from .schema import ExperimentConfig
 
 
+DEFAULT_CONFIGS = {
+    "logging": {
+        "level": "INFO",
+        "log_to_file": True,
+    },
+}
+
 EXAMPLE1: ExperimentConfig = {
     "name": "Example 1",
+    "seed": 42,
     "data": {
         "data_dir": "data/example1",
         "expression_file": "norm.csv",
@@ -13,16 +21,14 @@ EXAMPLE1: ExperimentConfig = {
     "output": {
         "output_dir": "out/example1",
         "overwrite": True,
+        "save_plots": True,
+        "save_intermediate_results": True,
     },
     "preprocessing": {
         "normalize": True,
         "method_normalize": "DSEQ2",
     },
-    "logging": {
-        "level": "INFO",
-        "log_to_file": True,
-        "log_dir": "logs/example1",
-    },
+    "logging": DEFAULT_CONFIGS["logging"]
 }
 
 

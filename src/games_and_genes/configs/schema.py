@@ -16,6 +16,8 @@ class DataConfig(TypedDict):
 class OutputConfig(TypedDict):
     output_dir: str
     overwrite: bool
+    save_plots: bool
+    save_intermediate_results: bool
 
 class PreprocessingConfig(TypedDict):
     normalize: bool
@@ -23,6 +25,7 @@ class PreprocessingConfig(TypedDict):
 
 class ExperimentConfig(TypedDict):
     name: str
+    seed: int
     data: DataConfig
     output: OutputConfig
     preprocessing: PreprocessingConfig
