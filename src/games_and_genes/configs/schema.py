@@ -9,9 +9,9 @@ class LoggingConfig(TypedDict):
 class DataConfig(TypedDict):
     data_dir: str
     expression_file: str
-    expression_id_column: Optional[str]
+    expression_id_col_idx: Optional[int]
     sample_data_file: str
-    sample_data_id_column: Optional[str]
+    sample_data_id_col_idx: Optional[int]
 
 class OutputConfig(TypedDict):
     output_dir: str
