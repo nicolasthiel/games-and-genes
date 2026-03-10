@@ -1,4 +1,4 @@
-from typing import Optional, TypedDict, List, Union, Literal
+from typing import Optional, TypedDict, List, Union, Literal, NotRequired, Any
 
 
 class LoggingConfig(TypedDict):
@@ -21,17 +21,27 @@ class DataConfig(TypedDict):
     expression_data: ExpressionDataConfig
     sample_data: SampleDataConfig
 
+class ExpressionPreprocessingConfig(TypedDict):
+    normalize: bool
+    method_normalize: Optional[Literal['DSEQ2']]
+    transform: bool
+    method_transform: Optional[Literal['log2', 'log10']]
+
+class FilterCondition(TypedDict):
+    column: str
+    operator: Literal['==', '!=', 'in', 'not in', '>', '<']
+    value: Any  # Can be a string, number, or list of strings
+
+class SamplePreprocessingConfig(TypedDict):
+    keep_columns: NotRequired[List[str]] 
+    drop_na_columns: NotRequired[List[str]]
+    filters: NotRequired[List[FilterCondition]]
+
 class OutputConfig(TypedDict):
     output_dir: str
     overwrite: bool
     save_plots: bool
     save_intermediate_results: bool
-
-class PreprocessingConfig(TypedDict):
-    normalize: bool
-    method_normalize: Optional[Literal['DSEQ2']]
-    transform: bool
-    method_transform: Optional[Literal['log2', 'log10']]
 
 class ExperimentConfig(TypedDict):
     name: str
@@ -39,6 +49,7 @@ class ExperimentConfig(TypedDict):
     save_config: bool
     data: DataConfig
     output: OutputConfig
-    preprocessing: PreprocessingConfig
+    expression_preprocessing: ExpressionPreprocessingConfig
+    sample_preprocessing: SamplePreprocessingConfig
     logging: LoggingConfig
     
