@@ -17,3 +17,7 @@ dependencies = [
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[project.scripts]
+# Format: "command-name" = "module.path:function_name"
+run = "games_and_genes.main:main"

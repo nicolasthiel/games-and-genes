@@ -7,10 +7,10 @@ from games_and_genes.logger import setup_logging
 logger = setup_logging(cfg['logging'], cfg['output']['output_dir'])
 logger = logging.getLogger(__name__)
 
-def run():
+def main():
     logger.info(f"Running experiment: {cfg['name']}")
     logger.warning(f"Data directory: {cfg['data']['data_dir']}")
     logger.error(f"Output directory: {cfg['output']['output_dir']}")
 
 if __name__ == "__main__":
-    run()
+    main()
