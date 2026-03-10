@@ -6,12 +6,20 @@ class LoggingConfig(TypedDict):
     log_to_file: bool
     log_dir: Optional[str]
 
+class ExpressionDataConfig(TypedDict):
+    expression_file: str
+    expression_file_separator: Literal[',', '\t', ';', ' ']
+    expression_id_col_idx: Optional[int]
+
+class SampleDataConfig(TypedDict):
+    sample_data_file: str
+    sample_data_file_separator: Literal[',', '\t', ';', ' ']
+    sample_data_id_col_idx: Optional[int]
+
 class DataConfig(TypedDict):
     data_dir: str
-    expression_file: str
-    expression_id_col_idx: Optional[int]
-    sample_data_file: str
-    sample_data_id_col_idx: Optional[int]
+    expression_data: ExpressionDataConfig
+    sample_data: SampleDataConfig
 
 class OutputConfig(TypedDict):
     output_dir: str
@@ -28,6 +36,7 @@ class PreprocessingConfig(TypedDict):
 class ExperimentConfig(TypedDict):
     name: str
     seed: int
+    save_config: bool
     data: DataConfig
     output: OutputConfig
     preprocessing: PreprocessingConfig
