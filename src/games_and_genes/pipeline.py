@@ -4,6 +4,8 @@ from games_and_genes.data_loading import DataLoader
 from games_and_genes.preprocessing.expression_preprocessing import ExpressionPreprocessor
 from games_and_genes.preprocessing.sample_preprocessing import SamplePreprocessor
 
+from games_and_genes.shapley import *
+
 logger = logging.getLogger(__name__)
 
 
@@ -29,6 +31,16 @@ class ExperimentPipeline:
         expression_df = self.expression_preprocessor.preprocess(expression_df, sample_ids_to_keep)
 
         # Shapley value calculation
+        B = create_boolean_diff_expressed_matrix(expression_df, sample_df)
+        sp_B = create_support_of_binary_matrix(B)
+        coalitions = find_coalitions(sp_B)
+        unanimity_coeffs = calculate_unanimity_coefficients(sp_B, coalitions)
+        shapley_values = calculate_shapley_value(
+            num_players=expression_df.shape[0],
+            coalitions=coalitions,
+            unanimity_coeffs=unanimity_coeffs
+        )
+        
 
         # Should we do statistical DEG here?
 
