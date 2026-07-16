@@ -4,7 +4,7 @@ from numpy.typing import NDArray
 from tqdm import tqdm
 
 
-def boolean_diff_expressed_matrix(
+def create_boolean_diff_expressed_matrix(
     A_SD: NDArray[np.number],
     A_SR: NDArray[np.number],
     lower_prctl: int = 0,
@@ -16,7 +16,7 @@ def boolean_diff_expressed_matrix(
     return B
 
 
-def support_of_binary_matrix(
+def create_support_of_binary_matrix(
         B: NDArray[np.bool_]
     ) -> list[set[int]]:
         return [set(np.nonzero(col)[0].tolist()) for col in B.T]
@@ -44,7 +44,7 @@ def find_coalitions(sp_B: list[set[int]]) -> list[set[int]]:
     return coalitions
 
 
-def unanimity_coefficients(sp_B: list[set[int]], coalitions: list[set[int]]) -> NDArray[np.float64]:
+def calculate_unanimity_coefficients(sp_B: list[set[int]], coalitions: list[set[int]]) -> NDArray[np.float64]:
     return np.array([sp_B.count(coalition) for coalition in coalitions])/len(sp_B)
 
 
