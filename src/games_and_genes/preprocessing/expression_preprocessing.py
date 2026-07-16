@@ -19,9 +19,18 @@ class ExpressionPreprocessor:
         logger.debug("Initialized ExpressionPreprocessor with preprocessing configuration.")
     
 
-    def preprocess(self, df: pd.DataFrame) -> pd.DataFrame:
+    def preprocess(self, expression_df: pd.DataFrame, sample_ids_to_keep: list) -> pd.DataFrame:
         logger.info("Starting preprocessing of expression data.")
-        raise NotImplementedError("Preprocessing is not implemented yet.")
+
+        expression_df = expression_df.loc[:, expression_df.columns.isin(sample_ids_to_keep)]
+
+        if self.normalize:
+            expression_df = self._normalize(expression_df)
+
+        if self.transform:
+            expression_df = self._transform(expression_df)
+
+        return expression_df
 
 
     def _normalize(self, df: pd.DataFrame) -> pd.DataFrame:

@@ -14,8 +14,8 @@ def main():
     logger.warning(f"Data directory: {cfg['data']['data_dir']}")
     logger.error(f"Output directory: {cfg['output']['output_dir']}")
 
-    logger.info(f"Setting global random seed to {cfg['random_seed']}")
-    np.random.seed(cfg['random_seed'])
+    logger.info(f"Setting global random seed to {cfg['seed']}")
+    np.random.seed(cfg['seed'])
 
     pipeline = ExperimentPipeline(config=cfg)
     pipeline.run()
