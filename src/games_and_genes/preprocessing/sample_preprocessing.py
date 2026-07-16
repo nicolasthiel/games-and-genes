@@ -12,7 +12,6 @@ logger = logging.getLogger(__name__)
 class SamplePreprocessor:
 
     def __init__(self, config: SamplePreprocessingConfig):
-        self.keep_columns = config.get("keep_columns", [])
         self.drop_na_columns = config.get("drop_na_columns", [])
         self.drop_duplicates = config.get("drop_duplicates", True)
         self.filters = config.get("filters", [])
@@ -21,10 +20,6 @@ class SamplePreprocessor:
 
     def preprocess(self, df: pd.DataFrame) -> pd.DataFrame:
         logger.info("Starting preprocessing of sample data.")
-        
-        if self.keep_columns:
-            df = df[self.keep_columns]
-            logger.debug(f"Kept columns: {self.keep_columns}")
 
         if self.drop_na_columns:
             df = df.dropna(subset=self.drop_na_columns)

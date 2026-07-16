@@ -10,7 +10,7 @@ class ExpressionDataConfig(TypedDict):
     expression_file: str
     expression_file_separator: Literal[',', '\t', ';', ' ']
     expression_id_col_idx: Optional[int]
-    identifier_type: Optional[Literal['ensembl', 'gene_symbol', 'entrez']]
+    identifier_type: Optional[Literal['ensembl', 'gene_symbol', 'entrez', 'custom']]
 
 class SampleDataConfig(TypedDict):
     sample_data_file: str
@@ -34,7 +34,6 @@ class FilterCondition(TypedDict):
     value: Any  # Can be a string, number, or list of strings
 
 class SamplePreprocessingConfig(TypedDict):
-    keep_columns: NotRequired[List[str]] 
     drop_na_columns: NotRequired[List[str]]
     drop_duplicates: NotRequired[bool]
     filters: NotRequired[List[FilterCondition]]

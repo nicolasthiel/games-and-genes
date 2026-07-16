@@ -12,8 +12,8 @@ class ExperimentPipeline:
     def __init__(self, config: ExperimentConfig):
         self.config = config
         self.data_loader = DataLoader(config.get("data"))
-        self.sample_preprocessor = SamplePreprocessor(config.get("preprocessing").get("sample"))
-        self.expression_preprocessor = ExpressionPreprocessor(config.get("preprocessing").get("expression"))
+        self.sample_preprocessor = SamplePreprocessor(config.get("preprocessing").get("sample_preprocessing"))
+        self.expression_preprocessor = ExpressionPreprocessor(config.get("preprocessing").get("expression_preprocessing"))
 
 
     def run(self):
