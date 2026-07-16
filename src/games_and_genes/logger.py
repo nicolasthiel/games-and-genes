@@ -17,7 +17,7 @@ class ColoredFormatter(logging.Formatter):
     reset = "\x1b[0m"
     
     # Your desired format (Clickable)
-    fmt = "%(asctime)s - %(filename)s:%(lineno)d - %(levelname)s - %(message)s"
+    fmt = "%(asctime)s - %(levelname)s - %(message)s - %(filename)s:%(lineno)d"
 
     FORMATS = {
         logging.DEBUG: grey + fmt + reset,
@@ -32,8 +32,8 @@ class ColoredFormatter(logging.Formatter):
         formatter = logging.Formatter(log_fmt, datefmt="%Y-%m-%d %H:%M:%S")
         return formatter.format(record)
 
-def setup_logging(experiment_name: str, log_config: dict):
-    log_dir = log_config.get('log_dir', f"logs/{experiment_name}")
+def setup_logging(log_config: dict, output_dir: str):
+    log_dir = log_config.get('log_dir', f"{output_dir}/logs")
     if log_config.get('log_to_file', False):
         os.makedirs(log_dir, exist_ok=True)
 
@@ -53,7 +53,7 @@ def setup_logging(experiment_name: str, log_config: dict):
     # --- HANDLER 2: FILE (CLEAN / NO COLORS) ---
     if log_config.get('log_to_file', False):
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"{experiment_name}_{timestamp}.log"
+        filename = f"{timestamp}.log"
         file_path = os.path.join(log_dir, filename)
         
         file_handler = logging.FileHandler(file_path)

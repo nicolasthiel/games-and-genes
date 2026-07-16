@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "games_and_genes"
+version = "0.1.0"
+description = ""
+readme = "README.md"
+requires-python = ">=3.10"
+
+dependencies = [
+    "numpy",
+    "pandas",
+    "pydeseq2"
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project.scripts]
+# Format: "command-name" = "module.path:function_name"
+run = "games_and_genes.main:main"
