@@ -20,14 +20,14 @@ class DataLoader:
         self.sample_data_file_path = self.data_dir / config['sample_data']['sample_data_file']
         self.sample_data_file_separator = config['sample_data']['sample_data_file_separator']
         self.sample_data_id_col_idx = config['sample_data'].get('sample_data_id_col_idx', 0)
-        logger.debug("Initialized DataLoader with data configuration.")
+        logger.debug("DataLoader initialized for %s", self.data_dir)
 
 
     def load_data(self) -> tuple[pd.DataFrame, pd.DataFrame]:
-        logger.info("Loading expression and sample data.")
+        logger.info("Loading expression and sample data")
         expression_df = self._load_expression_data()
         sample_df = self._load_sample_data()
-        logger.info("Successfully loaded expression and sample data.")
+        logger.info("Loaded expression and sample data")
         return expression_df, sample_df
 
 
@@ -46,9 +46,9 @@ class DataLoader:
                 index_col=self.expression_id_col_idx
             )
         else:
-            logger.error(f"Unsupported file format for expression data: {file_extension}")
+            logger.error("Unsupported expression data format %s for %s", file_extension, self.expression_file_path)
             raise ValueError(f"Unsupported file format: {file_extension}")
-        logger.debug(f"Loaded expression data with shape {df.shape} from {self.expression_file_path}")
+        logger.debug("Expression data shape %s from %s", df.shape, self.expression_file_path)
         return df
 
 
@@ -67,8 +67,8 @@ class DataLoader:
                 index_col=self.sample_data_id_col_idx
             )
         else:
-            logger.error(f"Unsupported file format for sample data: {file_extension}")
+            logger.error("Unsupported sample data format %s for %s", file_extension, self.sample_data_file_path)
             raise ValueError(f"Unsupported file format: {file_extension}")
-        logger.debug(f"Loaded sample data with shape {df.shape} from {self.sample_data_file_path}")
+        logger.debug("Sample data shape %s from %s", df.shape, self.sample_data_file_path)
         return df
     

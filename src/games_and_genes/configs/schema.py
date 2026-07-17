@@ -1,4 +1,7 @@
-from typing import Optional, TypedDict, List, Union, Literal, NotRequired, Any
+from typing import Optional, Type, TypedDict, List, Union, Literal, NotRequired, Any
+
+# NotRequired = Key is completely optional
+# Optional = Key needs to be present but can be None
 
 
 class LoggingConfig(TypedDict):
@@ -16,6 +19,9 @@ class SampleDataConfig(TypedDict):
     sample_data_file: str
     sample_data_file_separator: Literal[',', '\t', ';', ' ']
     sample_data_id_col_idx: Optional[int]
+    sample_data_condition_col_name: str
+    sample_data_condition_control_value: str
+    sample_data_condition_case_value: str
 
 class DataConfig(TypedDict):
     data_dir: str
@@ -42,6 +48,10 @@ class PreprocessingConfig(TypedDict):
     expression_preprocessing: ExpressionPreprocessingConfig
     sample_preprocessing: SamplePreprocessingConfig
 
+class ShapleyConfig(TypedDict):
+    discriminant_method_lower_bound: NotRequired[int]
+    discriminant_method_upper_bound: NotRequired[int]
+
 class OutputConfig(TypedDict):
     output_dir: str
     overwrite: bool
@@ -55,5 +65,6 @@ class ExperimentConfig(TypedDict):
     data: DataConfig
     output: OutputConfig
     preprocessing: PreprocessingConfig
+    shapley: ShapleyConfig
     logging: LoggingConfig
     
