@@ -13,6 +13,7 @@ class ColoredFormatter(logging.Formatter):
     green = "\x1b[32;20m"
     yellow = "\x1b[33;20m"
     red = "\x1b[31;20m"
+    blue = "\x1b[34;20m"
     bold_red = "\x1b[31;1m"
     reset = "\x1b[0m"
     
@@ -20,7 +21,7 @@ class ColoredFormatter(logging.Formatter):
     fmt = "%(asctime)s - %(levelname)s - %(message)s - %(filename)s:%(lineno)d"
 
     FORMATS = {
-        logging.DEBUG: grey + fmt + reset,
+        logging.DEBUG: blue + fmt + reset,
         logging.INFO: grey + fmt + reset,    # Kept white/grey as requested
         logging.WARNING: yellow + fmt + reset,
         logging.ERROR: red + fmt + reset,
@@ -32,22 +33,23 @@ class ColoredFormatter(logging.Formatter):
         formatter = logging.Formatter(log_fmt, datefmt="%Y-%m-%d %H:%M:%S")
         return formatter.format(record)
 
-def setup_logging(log_config: dict, output_dir: str):
+
+def setup_logging(log_config: dict, output_dir: str) -> logging.Logger:
     log_dir = log_config.get('log_dir', f"{output_dir}/logs")
     if log_config.get('log_to_file', False):
         os.makedirs(log_dir, exist_ok=True)
 
     logger = logging.getLogger()
     level_str = log_config.get("level", "INFO").upper()
-    logger.setLevel(getattr(logging, level_str))
+    logger.setLevel(getattr(logging, level_str, logging.INFO))
 
     # Avoid adding handlers multiple times
     if logger.handlers:
-        return
+        return logger
 
     # --- HANDLER 1: CONSOLE (COLORED) ---
     console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setFormatter(ColoredFormatter()) # <--- Use the colored class here
+    console_handler.setFormatter(ColoredFormatter())
     logger.addHandler(console_handler)
 
     # --- HANDLER 2: FILE (CLEAN / NO COLORS) ---
@@ -55,15 +57,15 @@ def setup_logging(log_config: dict, output_dir: str):
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"{timestamp}.log"
         file_path = os.path.join(log_dir, filename)
-        
+
         file_handler = logging.FileHandler(file_path)
-        
-        # Use standard formatter for files so they are readable
         plain_formatter = logging.Formatter(
             "%(asctime)s - %(filename)s:%(lineno)d - %(levelname)s - %(message)s",
             datefmt="%Y-%m-%d %H:%M:%S"
         )
         file_handler.setFormatter(plain_formatter)
         logger.addHandler(file_handler)
-        
-        print(f"Logging to file: {file_path}")
+
+        logger.info("Logging to file %s", file_path)
+
+    return logger
