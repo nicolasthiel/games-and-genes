@@ -160,6 +160,7 @@ df_collapsed <- df_mapped %>%
 
 # Set Ensembl ID as the clean matrix row index / rownames
 df_final_matrix <- df_collapsed %>%
+    dplyr::select(-hgnc_symbol) %>%
     column_to_rownames("ensembl_gene_id")
 
 # ==============================================================================
