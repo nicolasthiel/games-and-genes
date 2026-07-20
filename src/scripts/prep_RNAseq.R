@@ -26,11 +26,16 @@ for (pkg in required_bioc) {
 # 1. DATA LOADING & ENSEMBL VERSION CLEANUP
 # ==============================================================================
 cat("Loading datasets...\n")
-df_rna <- read.csv("data/GSE42568/raw/counts.csv", check.names = FALSE)
-metadata <- read.csv("data/GSE42568/raw/samples.csv", check.names = TRUE)
+gse_id <- "GSE42568"
+df_rna <- read.csv(file = file.path("data", gse_id, "raw", "counts.csv"), check.names = FALSE)
+metadata <- read.csv(file = file.path("data", gse_id, "raw", "samples.csv"), check.names = TRUE)
 
 # Strip Ensembl ID version numbers (e.g., ENSG00000000003.14 -> ENSG00000000003)
 # df_rna$ensembl_gene_id <- sub("\\.\\d+$", "", df_rna$ensembl_gene_id)
+
+# Drop rows without an Ensembl ID
+df_rna <- df_rna %>% filter(!is.na(ensembl_gene_id) & ensembl_gene_id != "")
+
 
 # Deduplicate if stripping version numbers resulted in non-unique Ensembl IDs
 if (any(duplicated(df_rna$ensembl_gene_id))) {
@@ -69,8 +74,8 @@ df_rna_matrix_filtered <- df_rna_matrix[keep_transcripts, ]
 cat(paste("Transcripts after filterByExpr:", nrow(df_rna_matrix_filtered), "\n"))
 
 # Save intermediate filtered matrices
-write.csv(df_rna_matrix_filtered, "data/for_SWAMP/expression_datasets/GTEx_agg_gene_rna/rna_matrix_filtered.csv", quote = FALSE)
-write.csv(metadata, "data/for_SWAMP/expression_datasets/GTEx_agg_gene_rna/samples_filtered.csv", row.names = FALSE)
+write.csv(df_rna_matrix_filtered, file = file.path("data", gse_id, "processed", "counts_filtered.csv"), quote = FALSE)
+write.csv(metadata, file = file.path("data", gse_id, "processed", "samples_filtered.csv"), row.names = FALSE)
 
 # ==============================================================================
 # 3. BATCH CORRECTION (ComBat_seq)
@@ -95,7 +100,7 @@ for (i in 1:num_chunks) {
 }
 
 df_rna_corrected <- do.call(rbind, corrected_chunks)
-write.csv(df_rna_corrected, "data/for_SWAMP/expression_datasets/GTEx_agg_gene_rna/rna_matrix_corrected.csv", quote = FALSE)
+write.csv(df_rna_corrected, file = file.path("data", gse_id, "processed", "counts_corrected.csv"), quote = FALSE)
 
 # ==============================================================================
 # 4. EXON-BASED NON-OVERLAPPING GENE LENGTH CALCULATION
@@ -169,12 +174,12 @@ rna_getmm_df <- as.data.frame(rna_getmm) %>%
 cat("Saving final outputs...\n")
 saveRDS(
   list("rna_getmm" = rna_getmm_df, "metadata" = metadata),
-  file = "data/for_SWAMP/expression_datasets/GTEx_agg_gene_rna/gtex_gene_getmm.rds"
+  file = file.path("data", gse_id, "processed", "gtex_gene_getmm.rds")
 )
 
 write.csv(
   rna_getmm_df,
-  file = "data/for_SWAMP/expression_datasets/GTEx_agg_gene_rna/data_gtex_gene_getmm.csv",
+  file = file.path("data", gse_id, "processed", "counts_getmm.csv"),
   row.names = FALSE,
   quote = FALSE
 )

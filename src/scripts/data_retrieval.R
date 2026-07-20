@@ -48,14 +48,14 @@ counts_df <- data.frame(
 
 # Merge matrix with gene annotations
 annotated_counts <- merge(
-  annotation_results, 
-  counts_df, 
-  by = "affy_hg_u133_plus_2", 
+  annotation_results,
+  counts_df,
+  by = "affy_hg_u133_plus_2",
   all.y = TRUE
 )
 
 annotated_counts <- annotated_counts[, !(names(annotated_counts) %in% c(
-  "affy_hg_u133_plus_2",
+  "ensembl_gene_id",
   "hgnc_symbol",
   "description"
 ))]
@@ -68,8 +68,7 @@ sample_metadata$batch <- sub(".*_(\\d{1,2}_\\d{1,2}_\\d{2})$", "\\1", sample_met
 
 # Save data
 dir.create(file.path("data", gse_id, "raw"), recursive = TRUE, showWarnings = FALSE)
-write.csv(sample_metadata, file = file.path("data", gse_id, "raw", "samples.csv"), row.names = TRUE)
+write.csv(sample_metadata, file = file.path("data", gse_id, "raw", "samples.csv"), row.names = FALSE)
 write.csv(annotated_counts, file = file.path("data", gse_id, "raw", "counts.csv"), row.names = FALSE)
 
 cat("Done! Output saved as CSV files in your current working directory.\n")
-
