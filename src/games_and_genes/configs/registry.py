@@ -102,8 +102,56 @@ EXAMPLE2: ExperimentConfig = {
     "logging": DEFAULT_CONFIGS["logging"]
 }
 
+GSE42568: ExperimentConfig = {
+    "name": "GSE42568",
+    "seed": 42,
+    "save_config": False,
+    "data": {
+        "data_dir": "data/GSE42568/processed",
+        "expression_data": {
+            "expression_file": "matrix_final.csv",
+            "expression_file_separator": ",",
+            "expression_id_col_idx": 0,
+            "identifier_type": "custom"
+        },
+        "sample_data": {
+            "sample_data_file": "samples_filtered.csv",
+            "sample_data_file_separator": ",",
+            "sample_data_id_col_idx": 0,
+            "sample_data_condition_col_name": "tissue.ch1",
+            "sample_data_condition_control_value": "normal breast",
+            "sample_data_condition_case_value": "breast cancer"
+        }
+    },
+    "output": {
+        "output_dir": "out/GSE42568",
+        "overwrite": True,
+        "save_plots": True,
+        "save_intermediate_results": True,
+    },
+    "preprocessing": {
+        "expression_preprocessing": {
+            "normalize": False,
+            "method_normalize": "DSEQ2",
+            "transform": False,
+            "method_transform": "log2"
+        },
+        "sample_preprocessing": {
+            "drop_na_columns": [],
+            "drop_duplicates": False,
+            "filters": []
+        }
+    },
+    "shapley": {
+        "discriminant_method_lower_bound": 0,
+        "discriminant_method_upper_bound": 100
+    },
+    "logging": DEFAULT_CONFIGS["logging"]
+}
+
 
 CONFIG_REGISTRY = {
     "example1": EXAMPLE1,
-    "example2": EXAMPLE2
+    "example2": EXAMPLE2,
+    "GSE42568": GSE42568
 }
