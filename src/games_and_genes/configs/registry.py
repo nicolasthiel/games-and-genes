@@ -11,7 +11,7 @@ DEFAULT_CONFIGS = {
 EXAMPLE1: ExperimentConfig = {
     "name": "Example 1",
     "seed": 42,
-    "save_config": False,
+    "save_config": True,
     "data": {
         "data_dir": "data/example1",
         "expression_data": {
@@ -58,7 +58,7 @@ EXAMPLE1: ExperimentConfig = {
 EXAMPLE2: ExperimentConfig = {
     "name": "Example 2",
     "seed": 42,
-    "save_config": False,
+    "save_config": True,
     "data": {
         "data_dir": "data/example2",
         "expression_data": {
@@ -105,7 +105,7 @@ EXAMPLE2: ExperimentConfig = {
 GSE42568: ExperimentConfig = {
     "name": "GSE42568",
     "seed": 42,
-    "save_config": False,
+    "save_config": True,
     "data": {
         "data_dir": "data/GSE42568/processed",
         "expression_data": {

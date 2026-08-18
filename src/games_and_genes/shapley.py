@@ -30,9 +30,11 @@ class ShapleyAnalyzer:
             len(reference_samples),
             len(diseased_samples),
         )
+        self.expression_df = expression_df
         self.A = expression_df.to_numpy()
         self.SR = reference_samples
         self.SD = diseased_samples
+        self.feature_names = expression_df.index.tolist()
 
         self.num_players = self.A.shape[0]
 
@@ -48,10 +50,27 @@ class ShapleyAnalyzer:
             lower_bound=self.discriminant_method_lower_bound,
             upper_bound=self.discriminant_method_upper_bound
         )
+        self.boolean_expression_matrix = self.B
         self.sp_B = self.create_support_of_binary_matrix(self.B)
         self.coalitions = self.find_coalitions(self.sp_B)
         self.unanimity_coeffs = self.calculate_unanimity_coefficients(self.sp_B, self.coalitions)
         logger.debug("Prepared %d coalitions for Shapley calculation", len(self.coalitions))
+
+
+    def get_artifacts(self) -> dict[str, object]:
+        return {
+            "expression_df": self.expression_df,
+            "A": self.A,
+            "A_SR": self.A_SR,
+            "A_SD": self.A_SD,
+            "boolean_expression_matrix": self.boolean_expression_matrix,
+            "sp_B": self.sp_B,
+            "coalitions": self.coalitions,
+            "unanimity_coeffs": self.unanimity_coeffs,
+            "feature_names": self.feature_names,
+            "reference_samples": self.SR,
+            "diseased_samples": self.SD,
+        }
 
 
     def create_boolean_diff_expressed_matrix(
