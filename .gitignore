@@ -210,4 +210,5 @@ __marimo__/
 .vscode/
 data/
 out/
+results/
 *logs/
