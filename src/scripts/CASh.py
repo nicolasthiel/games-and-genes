@@ -1,11 +1,13 @@
 import os
-import pandas as pd
-import numpy as np
 import json
 import logging
+from pathlib import Path
+from datetime import datetime
 
+import pandas as pd
+import numpy as np
 from matplotlib import pyplot as plt
-from typing import Any, Dict, Dict, List, Union, Union
+from typing import Any, Dict, List, Union
 from statsmodels.stats.multitest import multipletests
 from tqdm import tqdm
 
@@ -92,72 +94,130 @@ def run_CASh(B_case : pd.DataFrame, B_control : pd.DataFrame, b : int, seed : in
     return results_df, beta_dist
 
 
-def load_configuration(config_path: str) -> Dict[str, Any]:
+def load_configuration(config_path: Union[str, Path]) -> Dict[str, Any]:
     """Loads the pipeline configuration from a JSON file."""
     with open(config_path, 'r') as file:
         return json.load(file)
 
 
-def save_experiment_results(results_df: pd.DataFrame, output_dir: str, direction: str):
-    """Saves the results and beta distribution to CSV files."""
-    results_path = os.path.join(output_dir, f"results_{direction}.csv")
-    results_df.to_csv(results_path)
+def save_experiment_results(results_df: pd.DataFrame, beta_dist: pd.DataFrame, output_dir: Path, direction: str):
+    """Saves the results and beta distribution to CSV files using Pathlib."""
+    results_df.to_csv(output_dir / f"results_{direction}.csv")
+    beta_dist.to_csv(output_dir / f"beta_dist_{direction}.csv")
 
 
-def run_pipeline(config: Union[str, Dict[str, Any]]):
+def setup_logger(log_config: Dict[str, Any], output_dir: Path):
+    """Configures the python logging module based on the JSON config."""
+    logger = logging.getLogger()
+    logger.setLevel(getattr(logging, log_config.get("level", "INFO").upper()))
+    
+    if logger.hasHandlers():
+        logger.handlers.clear()
+        
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
 
-    # Load configuration
-    if isinstance(config, str):
-        cfg = load_configuration(config)
-    else:
-        cfg = config
+    ch = logging.StreamHandler()
+    ch.setFormatter(formatter)
+    logger.addHandler(ch)
 
-    # Ensure output directory exists
-    output_dir = f"out/{cfg['dataset']}/{cfg['experiment_name']}/"
-    os.makedirs(output_dir, exist_ok=True)
+    if log_config.get("log_to_file", False):
+        fh = logging.FileHandler(output_dir / "pipeline_run.log")
+        fh.setFormatter(formatter)
+        logger.addHandler(fh)
 
-    # Load data
-    df_expression = pd.read_csv(f"data/{cfg['dataset']}/{cfg['expression_data_file']}", index_col=0)
-    df_samples = pd.read_csv(f"data/{cfg['dataset']}/{cfg['samples_data_file']}", index_col=0)
 
-    # Identify case and control columns based on the configuration
-    case_columns = df_samples[df_samples[cfg["group_column"]] == cfg["case_value"]].index
-    control_columns = df_samples[df_samples[cfg["group_column"]] == cfg["control_value"]].index
+def run_pipeline(config: Union[str, Path, Dict[str, Any]]):
+    cfg = load_configuration(config) if isinstance(config, (str, Path)) else config
 
-    # Binarize expression data
-    B_plus, B_minus = binarize_expression(df_expression, control_columns)
-    Bs = {"plus": B_plus, "minus": B_minus}
+    dataset = cfg["dataset"]
+    base_data_dir = Path(cfg.get("data_dir", f"data/{dataset}"))
+    base_out_dir = Path(cfg.get("output_dir", f"results/{dataset}"))
+    
+    run_timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    run_dir = base_out_dir / run_timestamp
+    run_dir.mkdir(parents=True, exist_ok=True)
 
-    for direction in Bs:
-        B = Bs[direction]
-        B_case = B[case_columns]
-        B_control = B[control_columns]
-
-        df_results, beta_dist = run_CASh(B_case, B_control, b=cfg["num_bootstraps"], seed=cfg.get("random_seed", 42))
-        save_experiment_results(df_results, output_dir, direction)
-
-    # Save configuration for reproducibility
-    config_path = os.path.join(output_dir, "config.json")
-    with open(config_path, "w") as file:
+    setup_logger(cfg.get("logging", {}), run_dir)
+    logging.info(f"Starting pipeline for dataset: {dataset}")
+    
+    with open(run_dir / "config.json", "w") as file:
         json.dump(cfg, file, indent=4)
+
+    logging.info(f"Loading expression data...")
+    df_expression = pd.read_csv(base_data_dir / cfg["expression_data_file"], index_col=0)
+    
+    logging.info(f"Loading samples data...")
+    df_samples = pd.read_csv(base_data_dir / cfg["samples_data_file"], index_col=0)
+
+    num_bootstraps = cfg.get("num_bootstraps", 1000)
+    seed = cfg.get("random_seed", 42)
+
+    for comp in cfg.get("comparisons", []):
+        exp_name = comp["experiment_name"]
+        logging.info(f"=== Starting Experiment: {exp_name} ===")
+        
+        comp_dir = run_dir / exp_name
+        comp_dir.mkdir(exist_ok=True)
+
+        group_col = comp["group_column"]
+        case_val = comp["case_value"]
+        control_val = comp["control_value"]
+
+        case_columns = df_samples[df_samples[group_col] == case_val].index
+        control_columns = df_samples[df_samples[group_col] == control_val].index
+        logging.info(f"Identified {len(case_columns)} cases and {len(control_columns)} controls.")
+
+        logging.info("Binarizing expression data...")
+        B_plus, B_minus = binarize_expression(df_expression, control_columns)
+        Bs = {"plus": B_plus, "minus": B_minus}
+
+        for direction in Bs:
+            logging.info(f"Running CASh ({direction} direction)...")
+            B = Bs[direction]
+            
+            df_results, beta_dist = run_CASh(
+                B_case=B[case_columns], 
+                B_control=B[control_columns], 
+                b=num_bootstraps, 
+                seed=seed
+            )
+            
+            save_experiment_results(df_results, beta_dist, comp_dir, direction)
+            
+        logging.info(f"Experiment {exp_name} complete.\n")
+
+    logging.info(f"All experiments finished. Results saved to: {run_dir}")
 
 
 if __name__ == "__main__":
-
-    # Example configuration 
+    
     config = {
-        "experiment_name": "healthy_vs_diseased",
         "dataset": "GSE42568",
+        "data_dir": "data/GSE42568",
+        "output_dir": "results/GSE42568",
         "expression_data_file": "processed/matrix_final.csv",
         "samples_data_file": "processed/samples_filtered.csv",
-        "group_column": "tissue.ch1",
-        "case_value": "breast cancer",
-        "control_value": "normal breast",
         "num_bootstraps": 1000,
         "random_seed": 42,
         "logging": {
-                "level": "DEBUG",
-                "log_to_file": True,
-        }
+            "level": "INFO",
+            "log_to_file": False
+        },
+        "comparisons": [
+            {
+                "experiment_name": "healthy_vs_diseased",
+                "group_column": "tissue.ch1",
+                "case_value": "breast cancer",
+                "control_value": "normal breast"
+            },
+            # Add more experiments here, e.g., Grade 3 vs Grade 1
+            # {
+            #     "experiment_name": "grade3_vs_grade1",
+            #     "group_column": "tumor_grade",
+            #     "case_value": "3",
+            #     "control_value": "1"
+            # }
+        ]
     }
+    
     run_pipeline(config)
