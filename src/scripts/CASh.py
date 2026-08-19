@@ -191,33 +191,6 @@ def run_pipeline(config: Union[str, Path, Dict[str, Any]]):
 
 if __name__ == "__main__":
     
-    config = {
-        "dataset": "GSE42568",
-        "data_dir": "data/GSE42568",
-        "output_dir": "results/GSE42568",
-        "expression_data_file": "processed/matrix_final.csv",
-        "samples_data_file": "processed/samples_filtered.csv",
-        "num_bootstraps": 1000,
-        "random_seed": 42,
-        "logging": {
-            "level": "INFO",
-            "log_to_file": False
-        },
-        "comparisons": [
-            {
-                "experiment_name": "healthy_vs_diseased",
-                "group_column": "tissue.ch1",
-                "case_value": "breast cancer",
-                "control_value": "normal breast"
-            },
-            # Add more experiments here, e.g., Grade 3 vs Grade 1
-            # {
-            #     "experiment_name": "grade3_vs_grade1",
-            #     "group_column": "tumor_grade",
-            #     "case_value": "3",
-            #     "control_value": "1"
-            # }
-        ]
-    }
+    config = "data/E-MTAB-6698/config.json"
     
     run_pipeline(config)
