@@ -1,6 +1,7 @@
 import os
 import json
 import logging
+import argparse
 from pathlib import Path
 from datetime import datetime
 
@@ -51,7 +52,7 @@ def run_CASh(B_case : pd.DataFrame, B_control : pd.DataFrame, b : int, seed : in
 
     n, k = B_case.shape
     _, h = B_control.shape
-    m = k + h
+    m = k + h 
 
     shapley_case_observed = calculate_shapley_values(B_case)
     shapley_control_observed = calculate_shapley_values(B_control)
@@ -190,7 +191,15 @@ def run_pipeline(config: Union[str, Path, Dict[str, Any]]):
 
 
 if __name__ == "__main__":
-    
-    config = "data/E-MTAB-6698/config.json"
-    
+    parser = argparse.ArgumentParser(description="Run CASh pipeline.")
+    parser.add_argument(
+        "config",
+        nargs="?",
+        default="data/example1/config.json",
+        help="Path to the configuration JSON file."
+    )
+    args = parser.parse_args()
+
+    config = args.config
+
     run_pipeline(config)
