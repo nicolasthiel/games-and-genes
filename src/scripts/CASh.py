@@ -57,10 +57,14 @@ def run_CASh(B_case : pd.DataFrame, B_control : pd.DataFrame, b : int, seed : in
     shapley_case_observed = calculate_shapley_values(B_case)
     shapley_control_observed = calculate_shapley_values(B_control)
 
-    delta_observed = abs(shapley_case_observed - shapley_control_observed)
+    # d_0 (Signed Observed Difference) and delta_i (Absolute Observed Difference)
+    observed_diff_signed = shapley_case_observed - shapley_control_observed
+    delta_observed = abs(observed_diff_signed)
 
     count_beta_gte_delta = np.zeros(n)
     betas = np.zeros((n, b))
+    raw_diffs_res = np.zeros((n, b))
+
     for r in tqdm(range(b), desc="Running permutations"):
         idx_case_res = np.random.choice(k, size=k, replace=True)
         idx_control_res = np.random.choice(h, size=h, replace=True)
@@ -70,24 +74,34 @@ def run_CASh(B_case : pd.DataFrame, B_control : pd.DataFrame, b : int, seed : in
         shapley_case_res = calculate_shapley_values(B_case_res)
         shapley_control_res = calculate_shapley_values(B_control_res)
 
-        beta = abs((shapley_case_observed - shapley_control_observed) - (shapley_case_res - shapley_control_res))
+        diff_res = shapley_case_res - shapley_control_res
+        raw_diffs_res[:, r] = diff_res
+
+        # Centered bootstrap difference: beta = |d_r - d_0|
+        beta = abs(diff_res - observed_diff_signed)
         count_beta_gte_delta += (beta >= delta_observed)
         betas[:, r] = beta
+
+    bootstrap_se = np.std(raw_diffs_res, axis=1)
+    bootstrap_se_safe = np.where(bootstrap_se == 0, 1e-15, bootstrap_se)
+    
+    zscore_signed = observed_diff_signed / bootstrap_se_safe
+    zscore_absolute = delta_observed / bootstrap_se_safe
 
     raw_p_values = count_beta_gte_delta / b
     _, p_adjusted, _, _ = multipletests(raw_p_values, alpha=0.05, method='fdr_bh')
 
     beta_dist = pd.DataFrame(data=betas.T, index=[f"beta_{i+1}" for i in range(b)], columns=B_case.index)
 
-    eps = 1e-12
-    logfc = np.log2(shapley_case_observed + eps) - np.log2(shapley_control_observed + eps)
-
+    # --- UPDATED: Append new metrics to results_df ---
     results_df = pd.DataFrame({
             "shapley_case": shapley_case_observed,
             "shapley_control": shapley_control_observed,
-            "observed_difference": shapley_case_observed - shapley_control_observed,
+            "observed_difference": observed_diff_signed,
             "observed_abs_difference": delta_observed,
-            "logFC": logfc,
+            "bootstrap_se": bootstrap_se,
+            "zscore": zscore_signed,
+            "abs_zscore": zscore_absolute,
             "pval": raw_p_values,
             "pval_adj": p_adjusted
         }, index=B_case.index)
