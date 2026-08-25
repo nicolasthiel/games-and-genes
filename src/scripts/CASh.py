@@ -20,12 +20,8 @@ def binarize_expression(df_X : pd.DataFrame, ref_columns : List[str]) -> tuple[p
     over_thresholds = ref_means + ref_stdevs
     under_thresholds = ref_means - ref_stdevs
     
-    B_plus = pd.DataFrame(False, index=df_X.index, columns=df_X.columns)
-    B_minus = pd.DataFrame(False, index=df_X.index, columns=df_X.columns)
-    
-    for gene in df_X.index:
-        B_plus.loc[gene] = (df_X.loc[gene] >= over_thresholds[gene])
-        B_minus.loc[gene] = (df_X.loc[gene] <= under_thresholds[gene])
+    B_plus = df_X.ge(over_thresholds, axis=0).astype(int)
+    B_minus = df_X.le(under_thresholds, axis=0).astype(int)
         
     return B_plus, B_minus
 
