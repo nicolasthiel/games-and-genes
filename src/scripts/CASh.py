@@ -2,6 +2,8 @@ import os
 import json
 import logging
 import argparse
+import shutil
+import stat
 from pathlib import Path
 from datetime import datetime
 
@@ -117,6 +119,18 @@ def save_experiment_results(results_df: pd.DataFrame, beta_dist: pd.DataFrame, o
     beta_dist.to_csv(output_dir / f"beta_dist_{direction}.csv")
 
 
+def save_latest_run(run_dir: Path, output_dir: Path):
+    """Replaces the latest-run directory with a copy of the completed run."""
+    latest_dir = output_dir / "latest"
+    if latest_dir.exists():
+        def remove_readonly(func, path, exc):
+            os.chmod(path, stat.S_IWRITE)
+            func(path)
+
+        shutil.rmtree(latest_dir, onexc=remove_readonly)
+    shutil.copytree(run_dir, latest_dir)
+
+
 def setup_logger(log_config: Dict[str, Any], output_dir: Path):
     """Configures the python logging module based on the JSON config."""
     logger = logging.getLogger()
@@ -197,6 +211,7 @@ def run_pipeline(config: Union[str, Path, Dict[str, Any]]):
             
         logging.info(f"Experiment {exp_name} complete.\n")
 
+    save_latest_run(run_dir, base_out_dir)
     logging.info(f"All experiments finished. Results saved to: {run_dir}")
 
 
