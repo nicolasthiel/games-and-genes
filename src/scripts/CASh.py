@@ -2,6 +2,8 @@ import os
 import json
 import logging
 import argparse
+import shutil
+import stat
 from pathlib import Path
 from datetime import datetime
 
@@ -20,12 +22,8 @@ def binarize_expression(df_X : pd.DataFrame, ref_columns : List[str]) -> tuple[p
     over_thresholds = ref_means + ref_stdevs
     under_thresholds = ref_means - ref_stdevs
     
-    B_plus = pd.DataFrame(False, index=df_X.index, columns=df_X.columns)
-    B_minus = pd.DataFrame(False, index=df_X.index, columns=df_X.columns)
-    
-    for gene in df_X.index:
-        B_plus.loc[gene] = (df_X.loc[gene] >= over_thresholds[gene])
-        B_minus.loc[gene] = (df_X.loc[gene] <= under_thresholds[gene])
+    B_plus = df_X.ge(over_thresholds, axis=0).astype(int)
+    B_minus = df_X.le(under_thresholds, axis=0).astype(int)
         
     return B_plus, B_minus
 
@@ -121,6 +119,18 @@ def save_experiment_results(results_df: pd.DataFrame, beta_dist: pd.DataFrame, o
     beta_dist.to_csv(output_dir / f"beta_dist_{direction}.csv")
 
 
+def save_latest_run(run_dir: Path, output_dir: Path):
+    """Replaces the latest-run directory with a copy of the completed run."""
+    latest_dir = output_dir / "latest"
+    if latest_dir.exists():
+        def remove_readonly(func, path, exc):
+            os.chmod(path, stat.S_IWRITE)
+            func(path)
+
+        shutil.rmtree(latest_dir, onexc=remove_readonly)
+    shutil.copytree(run_dir, latest_dir)
+
+
 def setup_logger(log_config: Dict[str, Any], output_dir: Path):
     """Configures the python logging module based on the JSON config."""
     logger = logging.getLogger()
@@ -177,13 +187,23 @@ def run_pipeline(config: Union[str, Path, Dict[str, Any]]):
         group_col = comp["group_column"]
         case_val = comp["case_value"]
         control_val = comp["control_value"]
+        
 
         case_columns = df_samples[df_samples[group_col] == case_val].index
         control_columns = df_samples[df_samples[group_col] == control_val].index
         logging.info(f"Identified {len(case_columns)} cases and {len(control_columns)} controls.")
 
+        reference_val = comp.get("reference_value", None)
+        if reference_val is not None:
+            logging.info(f"Reference group specified: {group_col} = {reference_val}. This will be used for binarization.")
+            reference_columns = df_samples[df_samples[group_col] == reference_val].index
+        else:
+            logging.info(f"No reference value specified. Binarization will be based on control group: {group_col} = {control_val}.")
+            reference_columns = control_columns
+            
+
         logging.info("Binarizing expression data...")
-        B_plus, B_minus = binarize_expression(df_expression, control_columns)
+        B_plus, B_minus = binarize_expression(df_expression, reference_columns)
         Bs = {"plus": B_plus, "minus": B_minus}
 
         for direction in Bs:
@@ -201,6 +221,7 @@ def run_pipeline(config: Union[str, Path, Dict[str, Any]]):
             
         logging.info(f"Experiment {exp_name} complete.\n")
 
+    save_latest_run(run_dir, base_out_dir)
     logging.info(f"All experiments finished. Results saved to: {run_dir}")
 
 
