@@ -187,13 +187,23 @@ def run_pipeline(config: Union[str, Path, Dict[str, Any]]):
         group_col = comp["group_column"]
         case_val = comp["case_value"]
         control_val = comp["control_value"]
+        
 
         case_columns = df_samples[df_samples[group_col] == case_val].index
         control_columns = df_samples[df_samples[group_col] == control_val].index
         logging.info(f"Identified {len(case_columns)} cases and {len(control_columns)} controls.")
 
+        reference_val = comp.get("reference_value", None)
+        if reference_val is not None:
+            logging.info(f"Reference group specified: {group_col} = {reference_val}. This will be used for binarization.")
+            reference_columns = df_samples[df_samples[group_col] == reference_val].index
+        else:
+            logging.info(f"No reference value specified. Binarization will be based on control group: {group_col} = {control_val}.")
+            reference_columns = control_columns
+            
+
         logging.info("Binarizing expression data...")
-        B_plus, B_minus = binarize_expression(df_expression, control_columns)
+        B_plus, B_minus = binarize_expression(df_expression, reference_columns)
         Bs = {"plus": B_plus, "minus": B_minus}
 
         for direction in Bs:
