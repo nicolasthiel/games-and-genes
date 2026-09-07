@@ -113,10 +113,12 @@ def load_configuration(config_path: Union[str, Path]) -> Dict[str, Any]:
         return json.load(file)
 
 
-def save_experiment_results(results_df: pd.DataFrame, beta_dist: pd.DataFrame, output_dir: Path, direction: str):
+def save_experiment_results(results_df: pd.DataFrame, beta_dist: pd.DataFrame, B_case: pd.DataFrame, B_control: pd.DataFrame, output_dir: Path, direction: str):
     """Saves the results and beta distribution to CSV files using Pathlib."""
-    results_df.to_csv(output_dir / f"results_{direction}.csv")
-    beta_dist.to_csv(output_dir / f"beta_dist_{direction}.csv")
+    results_df.to_csv(output_dir / f"results.csv")
+    beta_dist.to_csv(output_dir / f"beta_dist.csv")
+    B_case.to_csv(output_dir / f"B_case.csv")
+    B_control.to_csv(output_dir / f"B_control.csv")
 
 
 def save_latest_run(run_dir: Path, output_dir: Path):
@@ -182,7 +184,6 @@ def run_pipeline(config: Union[str, Path, Dict[str, Any]]):
         logging.info(f"=== Starting Experiment: {exp_name} ===")
         
         comp_dir = run_dir / exp_name
-        comp_dir.mkdir(exist_ok=True)
 
         group_col = comp["group_column"]
         case_val = comp["case_value"]
@@ -209,15 +210,17 @@ def run_pipeline(config: Union[str, Path, Dict[str, Any]]):
         for direction in Bs:
             logging.info(f"Running CASh ({direction} direction)...")
             B = Bs[direction]
-            
+            B_case = B[case_columns]
+            B_control = B[control_columns]
             df_results, beta_dist = run_CASh(
-                B_case=B[case_columns], 
-                B_control=B[control_columns], 
+                B_case=B_case, 
+                B_control=B_control, 
                 b=num_bootstraps, 
                 seed=seed
             )
-            
-            save_experiment_results(df_results, beta_dist, comp_dir, direction)
+            output_dir = Path(comp_dir, direction) 
+            output_dir.mkdir(exist_ok=True, parents=True)
+            save_experiment_results(df_results, beta_dist, B_case, B_control, output_dir, direction)
             
         logging.info(f"Experiment {exp_name} complete.\n")
 
