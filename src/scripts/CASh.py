@@ -113,11 +113,17 @@ def load_configuration(config_path: Union[str, Path]) -> Dict[str, Any]:
         return json.load(file)
 
 
-def save_experiment_results(results_df: pd.DataFrame, beta_dist: pd.DataFrame, B_case: pd.DataFrame, B_control: pd.DataFrame, output_dir: Path, direction: str):
+def save_experiment_results(results_df: pd.DataFrame, beta_dist: pd.DataFrame, B_case: pd.DataFrame, B_control: pd.DataFrame, df_samples: pd.DataFrame, df_expression: pd.DataFrame, comp_dir: Path, direction: str):
+    output_dir = Path(comp_dir, direction)
+    output_dir.mkdir(exist_ok=True, parents=True)
+
     results_df.to_csv(output_dir / f"results.csv")
     beta_dist.to_csv(output_dir / f"beta_dist.csv")
     B_case.to_csv(output_dir / f"B_case.csv")
     B_control.to_csv(output_dir / f"B_control.csv")
+
+    df_expression.to_csv(comp_dir / f"expression.csv")
+    df_samples.to_csv(comp_dir / f"samples.csv")
 
 
 def save_latest_run(run_dir: Path, output_dir: Path):
@@ -177,6 +183,9 @@ def run_single_comparison(comp: dict, df_samples: pd.DataFrame, df_expression: p
     else:
         logging.info(f"[{exp_name}] No reference value specified. Binarization will be based on control group: {group_col} = {control_val}.")
         reference_columns = control_columns
+
+    df_samples_comp = df_samples_comp.loc[case_columns.union(control_columns).union(reference_columns)]
+    df_expression_comp = df_expression.loc[:, df_samples_comp.index]
         
     logging.info(f"[{exp_name}] Identified {len(case_columns)} cases, {len(reference_columns)} references, {len(control_columns)} controls.")
 
@@ -197,10 +206,10 @@ def run_single_comparison(comp: dict, df_samples: pd.DataFrame, df_expression: p
             seed=seed,
             desc=f"{exp_name} | {direction}" 
         )
-        output_dir = Path(comp_dir, direction) 
-        output_dir.mkdir(exist_ok=True, parents=True)
-        logging.info(f"[{exp_name} | {direction}] Saving results to {output_dir}...")
-        save_experiment_results(df_results, beta_dist, B_case, B_control, output_dir, direction)
+
+        comp_dir.mkdir(exist_ok=True, parents=True)
+        logging.info(f"[{exp_name} | {direction}] Saving results to {comp_dir}...")
+        save_experiment_results(df_results, beta_dist, B_case, B_control, df_samples_comp, df_expression_comp, comp_dir, direction)
         
     logging.info(f"[{exp_name}] Experiment complete.\n")
 
