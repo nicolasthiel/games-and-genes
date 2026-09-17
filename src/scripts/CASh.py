@@ -6,6 +6,7 @@ import shutil
 import stat
 from pathlib import Path
 from datetime import datetime
+import concurrent.futures # <-- Added for multithreading
 
 import pandas as pd
 import numpy as np
@@ -45,7 +46,7 @@ def calculate_shapley_values(B : pd.DataFrame) -> pd.Series:
     return pd.Series(shapley_values, index=B.index)
 
 
-def run_CASh(B_case : pd.DataFrame, B_control : pd.DataFrame, b : int, seed : int = 42) -> tuple[pd.DataFrame, pd.DataFrame]:
+def run_CASh(B_case : pd.DataFrame, B_control : pd.DataFrame, b : int, seed : int = 42, desc: str = "Running permutations") -> tuple[pd.DataFrame, pd.DataFrame]:
     np.random.seed(seed)
 
     n, k = B_case.shape
@@ -63,7 +64,8 @@ def run_CASh(B_case : pd.DataFrame, B_control : pd.DataFrame, b : int, seed : in
     betas = np.zeros((n, b))
     raw_diffs_res = np.zeros((n, b))
 
-    for r in tqdm(range(b), desc="Running permutations"):
+    # Added dynamic description to tqdm to track different threads easily
+    for r in tqdm(range(b), desc=desc, leave=False):
         idx_case_res = np.random.choice(k, size=k, replace=True)
         idx_control_res = np.random.choice(h, size=h, replace=True)
         B_case_res = B_case.iloc[:, idx_case_res]
@@ -91,7 +93,6 @@ def run_CASh(B_case : pd.DataFrame, B_control : pd.DataFrame, b : int, seed : in
 
     beta_dist = pd.DataFrame(data=betas.T, index=[f"beta_{i+1}" for i in range(b)], columns=B_case.index)
 
-    # --- UPDATED: Append new metrics to results_df ---
     results_df = pd.DataFrame({
             "shapley_case": shapley_case_observed,
             "shapley_control": shapley_control_observed,
@@ -108,21 +109,24 @@ def run_CASh(B_case : pd.DataFrame, B_control : pd.DataFrame, b : int, seed : in
 
 
 def load_configuration(config_path: Union[str, Path]) -> Dict[str, Any]:
-    """Loads the pipeline configuration from a JSON file."""
     with open(config_path, 'r') as file:
         return json.load(file)
 
 
-def save_experiment_results(results_df: pd.DataFrame, beta_dist: pd.DataFrame, B_case: pd.DataFrame, B_control: pd.DataFrame, output_dir: Path, direction: str):
-    """Saves the results and beta distribution to CSV files using Pathlib."""
+def save_experiment_results(results_df: pd.DataFrame, beta_dist: pd.DataFrame, B_case: pd.DataFrame, B_control: pd.DataFrame, df_samples: pd.DataFrame, df_expression: pd.DataFrame, comp_dir: Path, direction: str):
+    output_dir = Path(comp_dir, direction)
+    output_dir.mkdir(exist_ok=True, parents=True)
+
     results_df.to_csv(output_dir / f"results.csv")
     beta_dist.to_csv(output_dir / f"beta_dist.csv")
     B_case.to_csv(output_dir / f"B_case.csv")
     B_control.to_csv(output_dir / f"B_control.csv")
 
+    df_expression.to_csv(comp_dir / f"expression.csv")
+    df_samples.to_csv(comp_dir / f"samples.csv")
+
 
 def save_latest_run(run_dir: Path, output_dir: Path):
-    """Replaces the latest-run directory with a copy of the completed run."""
     latest_dir = output_dir / "latest"
     if latest_dir.exists():
         def remove_readonly(func, path, exc):
@@ -134,7 +138,6 @@ def save_latest_run(run_dir: Path, output_dir: Path):
 
 
 def setup_logger(log_config: Dict[str, Any], output_dir: Path):
-    """Configures the python logging module based on the JSON config."""
     logger = logging.getLogger()
     logger.setLevel(getattr(logging, log_config.get("level", "INFO").upper()))
     
@@ -151,6 +154,64 @@ def setup_logger(log_config: Dict[str, Any], output_dir: Path):
         fh = logging.FileHandler(output_dir / "pipeline_run.log")
         fh.setFormatter(formatter)
         logger.addHandler(fh)
+
+
+def run_single_comparison(comp: dict, df_samples: pd.DataFrame, df_expression: pd.DataFrame, run_dir: Path, num_bootstraps: int, seed: int):
+    exp_name = comp["experiment_name"]
+    logging.info(f"[{exp_name}] Starting comparison: {comp['case_value']} vs {comp['control_value']}")
+    
+    comp_dir = run_dir / exp_name
+
+    group_col = comp["group_column"]
+    case_val = comp["case_value"]
+    control_val = comp["control_value"]
+    shuffle_labels = comp.get("shuffle_group_labels", False)
+
+    df_samples_comp = df_samples.copy() 
+
+    if shuffle_labels:
+        logging.info(f"[{exp_name}] Shuffling sample labels ({group_col})")
+        df_samples_comp[group_col] = np.random.permutation(df_samples_comp[group_col].values)
+
+    case_columns = df_samples_comp[df_samples_comp[group_col] == case_val].index
+    control_columns = df_samples_comp[df_samples_comp[group_col] == control_val].index
+    reference_val = comp.get("reference_value", None)
+    
+    if reference_val is not None:
+        logging.info(f"[{exp_name}] Reference group specified: {group_col} = {reference_val}. This will be used for binarization.")
+        reference_columns = df_samples_comp[df_samples_comp[group_col] == reference_val].index
+    else:
+        logging.info(f"[{exp_name}] No reference value specified. Binarization will be based on control group: {group_col} = {control_val}.")
+        reference_columns = control_columns
+
+    df_samples_comp = df_samples_comp.loc[case_columns.union(control_columns).union(reference_columns)]
+    df_expression_comp = df_expression.loc[:, df_samples_comp.index]
+        
+    logging.info(f"[{exp_name}] Identified {len(case_columns)} cases, {len(reference_columns)} references, {len(control_columns)} controls.")
+
+    logging.info(f"[{exp_name}] Binarizing expression data...")
+    B_plus, B_minus = binarize_expression(df_expression, reference_columns)
+    Bs = {"plus": B_plus, "minus": B_minus, "unified": B_plus | B_minus}
+
+    for direction in Bs:
+        logging.info(f"[{exp_name} | {direction}] Running CASh...")
+        B = Bs[direction]
+        B_case = B[case_columns]
+        B_control = B[control_columns]
+        
+        df_results, beta_dist = run_CASh(
+            B_case=B_case, 
+            B_control=B_control, 
+            b=num_bootstraps, 
+            seed=seed,
+            desc=f"{exp_name} | {direction}" 
+        )
+
+        comp_dir.mkdir(exist_ok=True, parents=True)
+        logging.info(f"[{exp_name} | {direction}] Saving results to {comp_dir}...")
+        save_experiment_results(df_results, beta_dist, B_case, B_control, df_samples_comp, df_expression_comp, comp_dir, direction)
+        
+    logging.info(f"[{exp_name}] Experiment complete.\n")
 
 
 def run_pipeline(config: Union[str, Path, Dict[str, Any]]):
@@ -178,55 +239,32 @@ def run_pipeline(config: Union[str, Path, Dict[str, Any]]):
 
     num_bootstraps = cfg.get("num_bootstraps", 1000)
     seed = cfg.get("random_seed", 42)
+    comparisons = cfg.get("comparisons", [])
 
-    for comp in cfg.get("comparisons", []):
-        exp_name = comp["experiment_name"]
-        logging.info(f"=== Starting Experiment: {exp_name} ===")
-        
-        comp_dir = run_dir / exp_name
-
-        group_col = comp["group_column"]
-        case_val = comp["case_value"]
-        control_val = comp["control_value"]
-        shuffle_labels = comp.get("shuffle_group_labels", False)
-
-        df_samples_comp = df_samples.copy() 
-
-        if shuffle_labels:
-            logging.info(f"Shuffling sample labels ({group_col})")
-            df_samples_comp[group_col] = np.random.permutation(df_samples_comp[group_col].values)
-
-        case_columns = df_samples_comp[df_samples_comp[group_col] == case_val].index
-        control_columns = df_samples_comp[df_samples_comp[group_col] == control_val].index
-        reference_val = comp.get("reference_value", None)
-        if reference_val is not None:
-            logging.info(f"Reference group specified: {group_col} = {reference_val}. This will be used for binarization.")
-            reference_columns = df_samples_comp[df_samples_comp[group_col] == reference_val].index
-        else:
-            logging.info(f"No reference value specified. Binarization will be based on control group: {group_col} = {control_val}.")
-            reference_columns = control_columns
-        logging.info(f"Identified {len(case_columns)} cases, {len(reference_columns)} references, {len(control_columns)} controls.")
-
-        logging.info("Binarizing expression data...")
-        B_plus, B_minus = binarize_expression(df_expression, reference_columns)
-        Bs = {"plus": B_plus, "minus": B_minus, "unified": B_plus | B_minus}
-
-        for direction in Bs:
-            logging.info(f"Running CASh ({direction} direction)...")
-            B = Bs[direction]
-            B_case = B[case_columns]
-            B_control = B[control_columns]
-            df_results, beta_dist = run_CASh(
-                B_case=B_case, 
-                B_control=B_control, 
-                b=num_bootstraps, 
-                seed=seed
+    # --- NEW: ThreadPoolExecutor to run comparisons concurrently ---
+    # max_workers determines how many threads to run at once. 
+    # Defaults to min(32, os.cpu_count() + 4). You can manually set max_workers=4 if you prefer.
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        futures = []
+        for comp in comparisons:
+            futures.append(
+                executor.submit(
+                    run_single_comparison, 
+                    comp, 
+                    df_samples, 
+                    df_expression, 
+                    run_dir, 
+                    num_bootstraps, 
+                    seed
+                )
             )
-            output_dir = Path(comp_dir, direction) 
-            output_dir.mkdir(exist_ok=True, parents=True)
-            save_experiment_results(df_results, beta_dist, B_case, B_control, output_dir, direction)
-            
-        logging.info(f"Experiment {exp_name} complete.\n")
+        
+        # Wait for all threads to finish and catch any exceptions they might have raised
+        for future in concurrent.futures.as_completed(futures):
+            try:
+                future.result()
+            except Exception as exc:
+                logging.error(f"A comparison generated an exception: {exc}")
 
     save_latest_run(run_dir, base_out_dir)
     logging.info(f"All experiments finished. Results saved to: {run_dir}")
