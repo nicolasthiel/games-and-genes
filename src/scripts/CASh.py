@@ -14,6 +14,7 @@ from matplotlib import pyplot as plt
 from typing import Any, Dict, List, Union
 from statsmodels.stats.multitest import multipletests
 from tqdm import tqdm
+from sklearn.model_selection import train_test_split
 
 
 def binarize_expression(df_X : pd.DataFrame, ref_columns : List[str]) -> tuple[pd.DataFrame, pd.DataFrame]:
@@ -113,11 +114,35 @@ def load_configuration(config_path: Union[str, Path]) -> Dict[str, Any]:
         return json.load(file)
 
 
-def save_experiment_results(results_df: pd.DataFrame, beta_dist: pd.DataFrame, B_case: pd.DataFrame, B_control: pd.DataFrame, output_dir: Path, direction: str):
+def split_samples(df_samples: pd.DataFrame, train_share: float, seed: int) -> tuple[pd.DataFrame, pd.DataFrame]:
+    if not 0 <= train_share <= 1:
+        raise ValueError("train_share must be between 0 and 1")
+
+    if train_share == 1:
+        return df_samples.copy(), df_samples.iloc[0:0].copy()
+    if train_share == 0:
+        return df_samples.iloc[0:0].copy(), df_samples.copy()
+
+    return train_test_split(
+        df_samples,
+        train_size=train_share,
+        random_state=seed,
+        shuffle=True,
+    )
+
+
+def save_experiment_results(results_df: pd.DataFrame, beta_dist: pd.DataFrame, B_case: pd.DataFrame, B_control: pd.DataFrame, df_samples_train: pd.DataFrame, df_samples_test: pd.DataFrame, df_expression: pd.DataFrame, comp_dir: Path, direction: str):
+    output_dir = Path(comp_dir, direction)
+    output_dir.mkdir(exist_ok=True, parents=True)
+
     results_df.to_csv(output_dir / f"results.csv")
     beta_dist.to_csv(output_dir / f"beta_dist.csv")
     B_case.to_csv(output_dir / f"B_case.csv")
     B_control.to_csv(output_dir / f"B_control.csv")
+
+    df_expression.to_csv(comp_dir / f"expression.csv")
+    df_samples_train.to_csv(comp_dir / f"samples_train.csv")
+    df_samples_test.to_csv(comp_dir / f"samples_test.csv")
 
 
 def save_latest_run(run_dir: Path, output_dir: Path):
@@ -150,7 +175,7 @@ def setup_logger(log_config: Dict[str, Any], output_dir: Path):
         logger.addHandler(fh)
 
 
-def run_single_comparison(comp: dict, df_samples: pd.DataFrame, df_expression: pd.DataFrame, run_dir: Path, num_bootstraps: int, seed: int):
+def run_single_comparison(comp: dict, df_samples_train: pd.DataFrame, df_samples_test: pd.DataFrame, df_expression: pd.DataFrame, run_dir: Path, num_bootstraps: int, seed: int):
     exp_name = comp["experiment_name"]
     logging.info(f"[{exp_name}] Starting comparison: {comp['case_value']} vs {comp['control_value']}")
     
@@ -161,7 +186,7 @@ def run_single_comparison(comp: dict, df_samples: pd.DataFrame, df_expression: p
     control_val = comp["control_value"]
     shuffle_labels = comp.get("shuffle_group_labels", False)
 
-    df_samples_comp = df_samples.copy() 
+    df_samples_comp = df_samples_train.copy()
 
     if shuffle_labels:
         logging.info(f"[{exp_name}] Shuffling sample labels ({group_col})")
@@ -177,6 +202,9 @@ def run_single_comparison(comp: dict, df_samples: pd.DataFrame, df_expression: p
     else:
         logging.info(f"[{exp_name}] No reference value specified. Binarization will be based on control group: {group_col} = {control_val}.")
         reference_columns = control_columns
+
+    df_samples_comp = df_samples_comp.loc[case_columns.union(control_columns).union(reference_columns)]
+    df_expression_comp = df_expression.loc[:, df_samples_comp.index]
         
     logging.info(f"[{exp_name}] Identified {len(case_columns)} cases, {len(reference_columns)} references, {len(control_columns)} controls.")
 
@@ -197,10 +225,20 @@ def run_single_comparison(comp: dict, df_samples: pd.DataFrame, df_expression: p
             seed=seed,
             desc=f"{exp_name} | {direction}" 
         )
-        output_dir = Path(comp_dir, direction) 
-        output_dir.mkdir(exist_ok=True, parents=True)
-        logging.info(f"[{exp_name} | {direction}] Saving results to {output_dir}...")
-        save_experiment_results(df_results, beta_dist, B_case, B_control, output_dir, direction)
+
+        comp_dir.mkdir(exist_ok=True, parents=True)
+        logging.info(f"[{exp_name} | {direction}] Saving results to {comp_dir}...")
+        save_experiment_results(
+            df_results,
+            beta_dist,
+            B_case,
+            B_control,
+            df_samples_comp,
+            df_samples_test,
+            df_expression_comp,
+            comp_dir,
+            direction,
+        )
         
     logging.info(f"[{exp_name}] Experiment complete.\n")
 
@@ -230,11 +268,11 @@ def run_pipeline(config: Union[str, Path, Dict[str, Any]]):
 
     num_bootstraps = cfg.get("num_bootstraps", 1000)
     seed = cfg.get("random_seed", 42)
+    train_share = cfg.get("train_share", 1.0)
+    df_samples_train, df_samples_test = split_samples(df_samples, train_share, seed)
+    logging.info(f"Selected {len(df_samples_train)} training samples and {len(df_samples_test)} test samples.")
     comparisons = cfg.get("comparisons", [])
 
-    # --- NEW: ThreadPoolExecutor to run comparisons concurrently ---
-    # max_workers determines how many threads to run at once. 
-    # Defaults to min(32, os.cpu_count() + 4). You can manually set max_workers=4 if you prefer.
     with concurrent.futures.ThreadPoolExecutor() as executor:
         futures = []
         for comp in comparisons:
@@ -242,15 +280,14 @@ def run_pipeline(config: Union[str, Path, Dict[str, Any]]):
                 executor.submit(
                     run_single_comparison, 
                     comp, 
-                    df_samples, 
+                    df_samples_train,
+                    df_samples_test,
                     df_expression, 
                     run_dir, 
                     num_bootstraps, 
                     seed
                 )
             )
-        
-        # Wait for all threads to finish and catch any exceptions they might have raised
         for future in concurrent.futures.as_completed(futures):
             try:
                 future.result()
