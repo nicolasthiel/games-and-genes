@@ -270,7 +270,7 @@ def run_pipeline(config: Union[str, Path, Dict[str, Any]]):
     seed = cfg.get("random_seed", 42)
     train_share = cfg.get("train_share", 1.0)
     df_samples_train, df_samples_test = split_samples(df_samples, train_share, seed)
-    logging.info(f"Selected {len(df_samples_train)} training samples and {len(df_samples_test)} test samples.")
+    logging.info(f"Train share of {train_share}: Selected {len(df_samples_train)} training samples and {len(df_samples_test)} test samples.")
     comparisons = cfg.get("comparisons", [])
 
     with concurrent.futures.ThreadPoolExecutor() as executor:
