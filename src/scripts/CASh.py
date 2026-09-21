@@ -89,7 +89,7 @@ def run_CASh(B_case : pd.DataFrame, B_control : pd.DataFrame, b : int, seed : in
     zscore_signed = observed_diff_signed / bootstrap_se_safe
     zscore_absolute = delta_observed / bootstrap_se_safe
 
-    raw_p_values = count_beta_gte_delta / b
+    raw_p_values = (count_beta_gte_delta + 1.0) / (b + 1.0)
     _, p_adjusted, _, _ = multipletests(raw_p_values, alpha=0.05, method='fdr_bh')
 
     beta_dist = pd.DataFrame(data=betas.T, index=[f"beta_{i+1}" for i in range(b)], columns=B_case.index)
@@ -114,7 +114,7 @@ def load_configuration(config_path: Union[str, Path]) -> Dict[str, Any]:
         return json.load(file)
 
 
-def split_samples(df_samples: pd.DataFrame, train_share: float, seed: int) -> tuple[pd.DataFrame, pd.DataFrame]:
+def split_samples(df_samples: pd.DataFrame, train_share: float, seed: int, target_column: str) -> tuple[pd.DataFrame, pd.DataFrame]:
     if not 0 <= train_share <= 1:
         raise ValueError("train_share must be between 0 and 1")
 
@@ -128,7 +128,8 @@ def split_samples(df_samples: pd.DataFrame, train_share: float, seed: int) -> tu
         train_size=train_share,
         random_state=seed,
         shuffle=True,
-    )
+        stratify=df_samples[target_column]
+    )   
 
 
 def save_experiment_results(results_df: pd.DataFrame, beta_dist: pd.DataFrame, B_case: pd.DataFrame, B_control: pd.DataFrame, df_samples_train: pd.DataFrame, df_samples_test: pd.DataFrame, df_expression: pd.DataFrame, comp_dir: Path, direction: str):
@@ -175,7 +176,7 @@ def setup_logger(log_config: Dict[str, Any], output_dir: Path):
         logger.addHandler(fh)
 
 
-def run_single_comparison(comp: dict, df_samples_train: pd.DataFrame, df_samples_test: pd.DataFrame, df_expression: pd.DataFrame, run_dir: Path, num_bootstraps: int, seed: int):
+def run_single_comparison(comp: dict, df_samples: pd.DataFrame, df_expression: pd.DataFrame, run_dir: Path, num_bootstraps: int, seed: int):
     exp_name = comp["experiment_name"]
     logging.info(f"[{exp_name}] Starting comparison: {comp['case_value']} vs {comp['control_value']}")
     
@@ -186,37 +187,50 @@ def run_single_comparison(comp: dict, df_samples_train: pd.DataFrame, df_samples
     control_val = comp["control_value"]
     shuffle_labels = comp.get("shuffle_group_labels", False)
 
-    df_samples_comp = df_samples_train.copy()
+    df_samples_comp = df_samples.copy()
 
     if shuffle_labels:
         logging.info(f"[{exp_name}] Shuffling sample labels ({group_col})")
         df_samples_comp[group_col] = np.random.permutation(df_samples_comp[group_col].values)
 
-    case_columns = df_samples_comp[df_samples_comp[group_col] == case_val].index
-    control_columns = df_samples_comp[df_samples_comp[group_col] == control_val].index
+    train_share = comp["train_share"]
+    if train_share is None:
+        logging.info(f"[{exp_name}] No train_share specified. Using default all samples for training.")
+        train_share = 1.0
+    else:
+        logging.info(f"[{exp_name}] Using train_share = {train_share} for splitting samples into training and testing sets.")
+    df_samples_train, df_samples_test = split_samples(df_samples_comp, train_share, seed, group_col)
+
+    case_columns_train = df_samples_train[df_samples_train[group_col] == case_val].index
+    case_columns_test = df_samples_test[df_samples_test[group_col] == case_val].index
+    control_columns_train = df_samples_train[df_samples_train[group_col] == control_val].index
+    control_columns_test = df_samples_test[df_samples_test[group_col] == control_val].index
+
     reference_val = comp.get("reference_value", None)
     
     if reference_val is not None:
         logging.info(f"[{exp_name}] Reference group specified: {group_col} = {reference_val}. This will be used for binarization.")
-        reference_columns = df_samples_comp[df_samples_comp[group_col] == reference_val].index
+        reference_columns_train = df_samples_train[df_samples_train[group_col] == reference_val].index
+        reference_columns_test = df_samples_test[df_samples_test[group_col] == reference_val].index
     else:
         logging.info(f"[{exp_name}] No reference value specified. Binarization will be based on control group: {group_col} = {control_val}.")
-        reference_columns = control_columns
+        reference_columns_train = control_columns_train
+        reference_columns_test = control_columns_test
 
-    df_samples_comp = df_samples_comp.loc[case_columns.union(control_columns).union(reference_columns)]
-    df_expression_comp = df_expression.loc[:, df_samples_comp.index]
-        
-    logging.info(f"[{exp_name}] Identified {len(case_columns)} cases, {len(reference_columns)} references, {len(control_columns)} controls.")
+    df_samples_train = df_samples_train.loc[case_columns_train.union(control_columns_train).union(reference_columns_train)]
+    df_samples_test = df_samples_test.loc[case_columns_test.union(control_columns_test).union(reference_columns_test)]
+
+    logging.info(f"[{exp_name}] Identified {len(case_columns_train)} cases, {len(reference_columns_train)} references, {len(control_columns_train)} controls.")
 
     logging.info(f"[{exp_name}] Binarizing expression data...")
-    B_plus, B_minus = binarize_expression(df_expression, reference_columns)
+    B_plus, B_minus = binarize_expression(df_expression, reference_columns_train)
     Bs = {"plus": B_plus, "minus": B_minus, "unified": B_plus | B_minus}
 
     for direction in Bs:
         logging.info(f"[{exp_name} | {direction}] Running CASh...")
         B = Bs[direction]
-        B_case = B[case_columns]
-        B_control = B[control_columns]
+        B_case = B[case_columns_train]
+        B_control = B[control_columns_train]
         
         df_results, beta_dist = run_CASh(
             B_case=B_case, 
@@ -233,9 +247,9 @@ def run_single_comparison(comp: dict, df_samples_train: pd.DataFrame, df_samples
             beta_dist,
             B_case,
             B_control,
-            df_samples_comp,
+            df_samples_train,
             df_samples_test,
-            df_expression_comp,
+            df_expression,
             comp_dir,
             direction,
         )
@@ -268,9 +282,6 @@ def run_pipeline(config: Union[str, Path, Dict[str, Any]]):
 
     num_bootstraps = cfg.get("num_bootstraps", 1000)
     seed = cfg.get("random_seed", 42)
-    train_share = cfg.get("train_share", 1.0)
-    df_samples_train, df_samples_test = split_samples(df_samples, train_share, seed)
-    logging.info(f"Train share of {train_share}: Selected {len(df_samples_train)} training samples and {len(df_samples_test)} test samples.")
     comparisons = cfg.get("comparisons", [])
 
     with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -280,8 +291,7 @@ def run_pipeline(config: Union[str, Path, Dict[str, Any]]):
                 executor.submit(
                     run_single_comparison, 
                     comp, 
-                    df_samples_train,
-                    df_samples_test,
+                    df_samples,
                     df_expression, 
                     run_dir, 
                     num_bootstraps, 
