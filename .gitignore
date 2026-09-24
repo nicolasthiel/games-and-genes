@@ -213,3 +213,6 @@ out/
 results/
 *logs/
 archive/
+.Rproj.user
+.Rhistory
+*.Rproj
